@@ -13,24 +13,24 @@ const EVENING_TIME = process.env.EVENING_TIME || "0 21 * * *";
 const DRY_RUN = process.env.DRY_RUN === "true";
 
 const BINANCE_API = "https://api.binance.com";
-const SQUARE_POST_URL =
-  "https://www.binance.com/bapi/composite/v1/public/pgc/openApi/content/add";
+const SQUARE_POST_URL = "https://www.binance.com/bapi/composite/v1/public/pgc/openApi/content/add";
 
 async function getTicker24hr(symbol) {
-  const res = await fetch(`${BINANCE_API}/api/v3/ticker/24hr?symbol=${symbol}USDT`);
-  if (!res.ok) throw new Error(`فشل جلب بيانات ${symbol}: ${res.status}`);
+  const res = await fetch(BINANCE_API + "/api/v3/ticker/24hr?symbol=" + symbol + "USDT");
+  if (!res.ok) throw new Error("فشل جلب بيانات " + symbol + ": " + res.status);
   return res.json();
 }
 
-async function getKlines(symbol, interval = "1h", limit = 50) {
-  const res = await fetch(
-    `${BINANCE_API}/api/v3/klines?symbol=${symbol}USDT&interval=${interval}&limit=${limit}`
-  );
-  if (!res.ok) throw new Error(`فشل جلب الشموع ${symbol}: ${res.status}`);
+async function getKlines(symbol, interval, limit) {
+  interval = interval || "1h";
+  limit = limit || 50;
+  const res = await fetch(BINANCE_API + "/api/v3/klines?symbol=" + symbol + "USDT&interval=" + interval + "&limit=" + limit);
+  if (!res.ok) throw new Error("فشل جلب الشموع " + symbol + ": " + res.status);
   return res.json();
 }
 
-function calcRSI(closes, period = 14) {
+function calcRSI(closes, period) {
+  period = period || 14;
   if (closes.length < period + 1) return null;
   let gains = 0;
   let losses = 0;
@@ -49,7 +49,7 @@ function calcRSI(closes, period = 14) {
 async function analyzeCoin(symbol) {
   const ticker = await getTicker24hr(symbol);
   const klines = await getKlines(symbol);
-  const closes = klines.map((k) => parseFloat(k[4]));
+  const closes = klines.map(function (k) { return parseFloat(k[4]); });
   const rsi = calcRSI(closes);
 
   const price = parseFloat(ticker.lastPrice);
@@ -61,36 +61,4 @@ async function analyzeCoin(symbol) {
   if (changePercent > 3) trend = "صاعد بقوة";
   else if (changePercent > 0.5) trend = "صاعد";
   else if (changePercent < -3) trend = "هابط بقوة";
-  else if (changePercent < -0.5) trend = "هابط";
-
-  let rsiNote = "";
-  if (rsi !== null) {
-    if (rsi >= 70) rsiNote = `RSI ${rsi} - منطقة تشبع شرائي`;
-    else if (rsi <= 30) rsiNote = `RSI ${rsi} - منطقة تشبع بيعي`;
-    else rsiNote = `RSI ${rsi} - طبيعي`;
-  }
-
-  return { symbol, price, changePercent, high, low, trend, rsiNote };
-}
-
-function formatPrice(p) {
-  if (p >= 100) return p.toFixed(2);
-  if (p >= 1) return p.toFixed(3);
-  return p.toFixed(6);
-}
-
-function buildPost(analyses, slot) {
-  const dateStr = new Date().toLocaleDateString("ar-EG", {
-    timeZone: TZ_NAME,
-    day: "numeric",
-    month: "long",
-  });
-
-  const header =
-    slot === "morning"
-      ? `تحديث السوق الصباحي - ${dateStr}`
-      : `تحديث السوق المسائي - ${dateStr}`;
-
-  const lines = analyses.map((a) => {
-    const sign = a.changePercent >= 0 ? "+" : "";
-    return `\n$${a.symbol} ${a.trend}\nالسعر
+  else if (changePerce
